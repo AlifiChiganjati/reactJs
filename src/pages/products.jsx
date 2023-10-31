@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "../components/Elements/Button";
 import CardProduct from "../components/Fragments/CardProduct";
 import Counter from "../components/Fragments/Counter";
+
 const products = [
   {
     id: 1,
@@ -26,17 +27,32 @@ const products = [
   },
 ];
 
-const email = localStorage.getItem("email");
-
-const handleLogout = () => {
-  localStorage.removeItem("email");
-  localStorage.removeItem("password");
-  window.location.href = "/login";
-};
-
 const ProductsPage = () => {
-  const [cart, setCart] = useState([]);
+  const email = localStorage.getItem("email");
 
+  const handleLogout = () => {
+    localStorage.removeItem("email");
+    localStorage.removeItem("password");
+    window.location.href = "/login";
+  };
+
+  const [cart, setCart] = useState([]);
+  const [totalPrice, setTotalPrice] = useState(0);
+
+  useEffect(() => {
+    setCart(JSON.parse(localStorage.getItem("cart")) || []);
+  }, []);
+
+  useEffect(() => {
+    if (cart.length > 0) {
+      const sum = cart.reduce((acc, item) => {
+        const product = products.find((product) => product.id === item.id);
+        return acc + product.price * item.qty;
+      }, 0);
+      setTotalPrice(sum);
+      localStorage.setItem("cart", JSON.stringify(cart));
+    }
+  }, [cart]);
   const handleAddToCart = (id) => {
     if (cart.find((item) => item.id === id)) {
       setCart(
@@ -49,6 +65,23 @@ const ProductsPage = () => {
     }
   };
 
+  // NOTE: useRef
+  const cartRef = useRef(JSON.parse(localStorage.getItem("cart")) || []);
+  const handleAddToCartRef = (id) => {
+    cartRef.current = [...cartRef.current, { id, qty: 1 }];
+    localStorage.setItem("cart", JSON.stringify(cartRef.current));
+  };
+
+  const totalPriceRef = useRef(null);
+  useEffect(() => {
+    if (cart.length > 0) {
+      totalPriceRef.current.style.display = "table-row";
+    } else {
+      totalPriceRef.current.style.display = "none";
+    }
+  }, [cart]);
+
+  console.info(totalPriceRef);
   return (
     <>
       <div className="w-full flex justify-end items-center h-20 bg-blue-500 text-white px-10">
@@ -110,6 +143,16 @@ const ProductsPage = () => {
                   </tr>
                 );
               })}
+              <tr ref={totalPriceRef}>
+                <td colSpan={3}>total price</td>
+                <td>
+                  Rp.{" "}
+                  {totalPrice.toLocaleString("id-ID", {
+                    styles: "currency",
+                    currency: "IDR",
+                  })}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
